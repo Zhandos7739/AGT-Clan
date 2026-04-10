@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AGT — Клан в Rust</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <style>
+        :root { --accent: #e63946; --accent-glow: rgba(230, 57, 70, 0.5); --accent2: #f4a261; --bg-dark: #0a0806; --glass: rgba(20, 16, 14, 0.85); --glass-border: rgba(255, 255, 255, 0.06); --text: #f0ece8; --text-muted: #a89f91; --text-sub: #6b5f52; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body { background: var(--bg-dark); color: var(--text); font-family: 'Inter', sans-serif; overflow-x: hidden; cursor: none; }
+        button, a, input, textarea, select, .clickable { cursor: pointer !important; }
+        input, textarea, select { cursor: text !important; }
+        #canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+        .cursor-wrapper { position: fixed; pointer-events: none; z-index: 9999; transform: translate(-50%, -50%); mix-blend-mode: screen; }
+        .cursor-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; box-shadow: 0 0 10px var(--accent); }
+        .cursor-ring { position: absolute; top: 50%; left: 50%; width: 36px; height: 36px; transform: translate(-50%, -50%); border: 2px solid var(--accent); border-radius: 50%; opacity: 0.6; }
+        .content { position: relative; z-index: 10; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+        nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; background: rgba(10,8,6,0.95); backdrop-filter: blur(16px); border-bottom: 1px solid var(--glass-border); }
+        .logo { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: #fff; letter-spacing: 4px; text-decoration: none; }
+        .logo span { color: var(--accent); text-shadow: 0 0 12px var(--accent-glow); }
+        .nav-links { display: flex; gap: 24px; list-style: none; }
+        .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; transition: 0.3s; text-transform: uppercase; letter-spacing: 1px; }
+        .nav-links a:hover { color: var(--accent); }
+        .burger { display: none; flex-direction: column; gap: 5px; cursor: pointer; }
+        .burger span { width: 24px; height: 2px; background: #fff; transition: 0.3s; }
+        .hero { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 100px 20px 60px; position: relative; }
+        .hero-badge { display: inline-block; padding: 6px 20px; border-radius: 20px; border: 1px solid var(--accent); color: var(--accent); font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 20px; background: rgba(230,57,70,0.08); }
+        .hero h1 { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: clamp(3rem, 9vw, 6.5rem); line-height: 1; margin-bottom: 10px; letter-spacing: 6px; }
+        .hero h1 .clr { color: var(--accent); text-shadow: 0 0 40px var(--accent-glow); }
+        .hero .tagline { color: var(--accent2); font-family: 'Orbitron', sans-serif; font-size: clamp(0.8rem, 2vw, 1.1rem); letter-spacing: 4px; text-transform: uppercase; margin-bottom: 20px; }
+        .hero p { max-width: 560px; color: var(--text-muted); font-size: 1.1rem; margin-bottom: 35px; line-height: 1.7; }
+        .btn-group { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+        .btn { padding: 14px 32px; border-radius: 10px; font-weight: 700; text-decoration: none; font-size: 0.95rem; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px; border: none; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent), #b91c2c); color: #fff; box-shadow: 0 4px 25px var(--accent-glow); }
+        .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px var(--accent-glow); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+        .btn-outline { background: transparent; border: 1px solid var(--glass-border); color: #fff; }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-3px); }
+        section { padding: 80px 20px; max-width: 1100px; margin: 0 auto; }
+        .section-header { text-align: center; margin-bottom: 50px; }
+        .section-header h2 { font-family: 'Orbitron', sans-serif; font-size: 1.9rem; margin-bottom: 10px; letter-spacing: 1px; }
+        .section-header h2 .clr { color: var(--accent); text-shadow: 0 0 10px var(--accent-glow); }
+        .section-header p { color: var(--text-muted); max-width: 520px; margin: 0 auto; }
+        .section-header .line { width: 50px; height: 3px; background: var(--accent); margin: 12px auto 0; border-radius: 2px; }
+        .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
+        .about-text h3 { font-size: 1.4rem; margin-bottom: 16px; color: #fff; }
+        .about-text p { color: var(--text-muted); margin-bottom: 14px; line-height: 1.7; }
+        .about-img { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 16px; aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center; font-size: 4rem; position: relative; overflow: hidden; }
+        .about-img::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+        .card { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 14px; padding: 30px 24px; transition: 0.4s; position: relative; overflow: hidden; }
+        .card:hover { border-color: rgba(230,57,70,0.3); transform: translateY(-6px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), transparent); opacity: 0; transition: 0.4s; }
+        .card:hover::before { opacity: 1; }
+        .card .icon { font-size: 2.2rem; margin-bottom: 16px; }
+        .card h3 { font-size: 1.05rem; color: #fff; margin-bottom: 10px; font-weight: 700; }
+        .card p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.65; }
+        .roster-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
+        .member { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 14px; padding: 24px 16px; text-align: center; transition: 0.4s; }
+        .member:hover { transform: translateY(-4px); border-color: rgba(230,57,70,0.25); }
+        .member .avatar { width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; border: 2px solid var(--glass-border); background: rgba(255,255,255,0.03); }
+        .member.lead .avatar { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); }
+        .member .name { font-weight: 700; font-size: 0.95rem; margin-bottom: 4px; }
+        .member .role { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
+        .member.lead .role { color: var(--accent); }
+        .member:not(.lead) .role { color: var(--accent2); }
+        .rules { max-width: 750px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+        .rule { display: flex; gap: 18px; align-items: flex-start; background: var(--glass); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; transition: 0.3s; }
+        .rule:hover { border-color: rgba(230,57,70,0.2); }
+        .rule-num { font-family: 'Orbitron', sans-serif; font-weight: 900; font-size: 1.5rem; color: var(--accent); min-width: 40px; text-shadow: 0 0 10px var(--accent-glow); }
+        .rule h4 { color: #fff; font-size: 0.98rem; margin-bottom: 4px; }
+        .rule p { color: var(--text-muted); font-size: 0.88rem; }
+        #apply { background: rgba(230,57,70,0.03); border-top: 1px solid var(--glass-border); border-bottom: 1px solid var(--glass-border); border-radius: 0; max-width: 100%; padding: 80px 20px; }
+        #apply .container { max-width: 680px; margin: 0 auto; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--accent); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 12px 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); border-radius: 8px; color: #fff; font-family: 'Inter', sans-serif; font-size: 0.95rem; outline: none; transition: 0.3s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(230,57,70,0.1); }
+        .form-group textarea { min-height: 110px; resize: vertical; }
+        .form-group select option { background: #111; color: #fff; }
+        .captcha-row { display: flex; align-items: center; gap: 12px; }
+        .captcha-q { background: rgba(255,255,255,0.05); padding: 8px 12px; border-radius: 6px; font-family: monospace; font-size: 1.1rem; color: var(--accent2); letter-spacing: 2px; }
+        .form-submit { text-align: center; margin-top: 25px; }
+        .form-submit .btn { min-width: 240px; justify-content: center; font-size: 1rem; }
+        .cooldown-msg { color: #ff5252; font-size: 0.85rem; margin-top: 10px; display: none; }
+        .faq { max-width: 750px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+        .faq-item { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 10px; overflow: hidden; transition: 0.3s; }
+        .faq-item:hover { border-color: rgba(230,57,70,0.2); }
+        .faq-q { padding: 16px 20px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .faq-q:hover { color: var(--accent); }
+        .faq-q .arrow { color: var(--accent); transition: 0.3s; font-size: 0.9rem; }
+        .faq-item.open .faq-q .arrow { transform: rotate(180deg); }
+        .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.4s ease; }
+        .faq-item.open .faq-a { max-height: 250px; padding: 0 20px 18px; }
+        .faq-a p { color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; }
+        .connect-box { background: var(--glass); border: 1px solid var(--glass-border); border-radius: 16px; padding: 40px; text-align: center; max-width: 500px; margin: 0 auto; }
+        .connect-box h3 { font-family: 'Orbitron', sans-serif; font-size: 1.3rem; margin-bottom: 8px; }
+        .connect-box p { color: var(--text-muted); margin-bottom: 20px; }
+        .connect-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        footer { text-align: center; padding: 30px 20px; color: var(--text-sub); font-size: 0.82rem; border-top: 1px solid var(--glass-border); position: relative; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--accent); color: #fff; padding: 12px 28px; border-radius: 8px; font-weight: 700; opacity: 0; transition: 0.4s; z-index: 999; }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); display: none; align-items: center; justify-content: center; z-index: 500; padding: 20px; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: var(--bg-dark); border: 1px solid var(--glass-border); border-radius: 16px; padding: 40px; max-width: 480px; width: 100%; text-align: center; position: relative; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .modal h3 { font-family: 'Orbitron', sans-serif; font-size: 1.4rem; margin-bottom: 12px; }
+        .modal p { color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; }
+        .modal .close { position: absolute; top: 12px; right: 18px; background: none; border: none; color: var(--text-muted); font-size: 1.4rem; }
+        .modal .close:hover { color: var(--accent); }
+        .fade-in { opacity: 0; transform: translateY(25px); transition: 0.7s ease; }
+        .fade-in.visible { opacity: 1; transform: translateY(0); }
+        .easter-egg { position: fixed; bottom: 15px; right: 15px; z-index: 400; font-size: 0.75rem; color: rgba(255,255,255,0.15); cursor: pointer; transition: 0.3s; user-select: none; padding: 5px 8px; border-radius: 4px; }
+        .easter-egg:hover { color: rgba(230,57,70,0.6); background: rgba(230,57,70,0.05); }
+        .secret-msg { display: none; position: fixed; bottom: 50px; right: 15px; background: var(--glass); border: 1px solid var(--accent); padding: 12px 16px; border-radius: 8px; font-size: 0.85rem; color: var(--accent2); z-index: 401; box-shadow: 0 5px 20px rgba(0,0,0,0.5); animation: fadeInUp 0.3s ease; }
+        @media (max-width: 768px) {
+            .nav-links { display: none; position: fixed; top: 0; right: -300px; width: 280px; height: 100vh; background: var(--bg-dark); flex-direction: column; padding: 80px 30px 30px; border-left: 1px solid var(--glass-border); transition: 0.4s; z-index: 90; }
+            .nav-links.open { display: flex; right: 0; }
+            .burger { display: flex; z-index: 101; }
+            .burger.active span:nth-child(1) { transform: rotate(45deg) translate(5px,5px); }
+            .burger.active span:nth-child(2) { opacity: 0; }
+            .burger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px,-5px); }
+            .about-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 3rem; letter-spacing: 3px; }
+            section { padding: 50px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="cursor-wrapper" id="cursorWrapper"><div class="cursor-dot"></div><div class="cursor-ring"></div></div>
+    <div class="content">
+        <nav><a href="#" class="logo">A<span>G</span>T</a><ul class="nav-links" id="navLinks"><li><a href="#about" onclick="closeMenu()">О нас</a></li><li><a href="#why" onclick="closeMenu()">Почему мы</a></li><li><a href="#roster" onclick="closeMenu()">Состав</a></li><li><a href="#rules" onclick="closeMenu()">Правила</a></li><li><a href="#faq" onclick="closeMenu()">FAQ</a></li><li><a href="#apply" onclick="closeMenu()">Вступить</a></li></ul><div class="burger" id="burger" onclick="toggleMenu()"><span></span><span></span><span></span></div></nav>
+        <section class="hero"><div class="hero-badge">🔥 Rust • Survival • PvP</div><h1>A<span class="clr">G</span>T</h1><div class="tagline">Always • Grinding • Together</div><p>Элитный клан в Rust. Мы не просто выживаем — мы доминируем. Рейды, ПВП, контроль карты, вайп-стратегии — всё под нашим контролем.</p><div class="btn-group"><a href="#apply" class="btn btn-primary">⚔️ Вступить в клан</a><a href="#about" class="btn btn-outline">Узнать больше →</a></div></section>
+        <section id="about"><div class="container fade-in"><div class="section-header"><h2>О клане <span class="clr">AGT</span></h2><p>Мы — те, кто контролирует сервер</p><div class="line"></div></div><div class="about-grid"><div class="about-text"><h3>Наша история</h3><p>Клан <strong style="color: var(--accent)">AGT</strong> был создан группой ветеранов Rust, которые устали от хаоса соло-игры. Мы объединили лучших игроков в одну сплочённую команду.</p><ul style="list-style: none; margin-top: 15px;"><li style="padding: 6px 0; color: #ccc; display: flex; align-items: center; gap: 10px;"><span style="color: var(--accent);">✦</span> Контроль монументов и точек лута</li><li style="padding: 6px 0; color: #ccc; display: flex; align-items: center; gap: 10px;"><span style="color: var(--accent);">✦</span> Координированные рейды 24/7</li><li style="padding: 6px 0; color: #ccc; display: flex; align-items: center; gap: 10px;"><span style="color: var(--accent);">✦</span> Чёткая иерархия и дисциплина</li></ul></div><div class="about-img">🏕️</div></div></div></section>
+        <section id="why"><div class="container fade-in"><div class="section-header"><h2>Почему <span class="clr">AGT</span>?</h2><p>6 причин, почему игроки выбирают именно нас</p><div class="line"></div></div><div class="cards-grid"><div class="card"><div class="icon">🎯</div><h3>Тактические рейды</h3><p>Каждый рейд спланирован: разведка, подбор инструментов, отход.</p></div><div class="card"><div class="icon">🛡️</div><h3>Непробиваемая база</h3><p>Honeycombing, ловушки, идеальное расположение.</p></div><div class="card"><div class="icon">⚔️</div><h3>ПВП-мастерство</h3><p>Регулярные тренировки, контроль отдачи, доминация.</p></div><div class="card"><div class="icon">📡</div><h3>Discord</h3><p>Мгновенная связь в бою — ключ к победе.</p></div><div class="card"><div class="icon">📈</div><h3>Продвижение</h3><p>Карьерный рост от рекрута до офицера.</p></div><div class="card"><div class="icon">🤝</div><h3>Братство</h3><p>Делимся ресурсами, обучаем, поддерживаем.</p></div></div></div></section>
+        <section id="roster"><div class="container fade-in"><div class="section-header"><h2>Состав <span class="clr">клана</span></h2><div class="line"></div></div><div class="roster-grid"><div class="member lead"><div class="avatar">👑</div><div class="name">AGT_Leader</div><div class="role">Лидер</div></div><div class="member lead"><div class="avatar">⚡</div><div class="name">AGT_CoLeader</div><div class="role">Со-лидер</div></div><div class="member"><div class="avatar">🔥</div><div class="name">RaidMaster</div><div class="role">Офицер рейдов</div></div><div class="member"><div class="avatar">💀</div><div class="name">ShadowOps</div><div class="role">Разведка</div></div><div class="member"><div class="avatar">🏗️</div><div class="name">BuilderX</div><div class="role">Строитель</div></div><div class="member"><div class="avatar">🎯</div><div class="name">SharpShooter</div><div class="role">ПВП-инструктор</div></div></div></div></section>
+        <section id="rules"><div class="container fade-in"><div class="section-header"><h2>Правила <span class="clr">AGT</span></h2><div class="line"></div></div><div class="rules"><div class="rule"><div class="rule-num">01</div><div><h4>Подчинение иерархии</h4><p>Приказы выполняются без обсуждений.</p></div></div><div class="rule"><div class="rule-num">02</div><div><h4>Активность на вайпе</h4><p>Минимум 4-5 часов в день первые 72 часа.</p></div></div><div class="rule"><div class="rule-num">03</div><div><h4>Запрет читов</h4><p>Любой софт — мгновенный кик.</p></div></div><div class="rule"><div class="rule-num">04</div><div><h4>Участие в рейдах</h4><p>Обязательное присутствие на операциях.</p></div></div></div></div></section>
+        <section id="faq"><div class="container fade-in"><div class="section-header"><h2>Частые <span class="clr">вопросы</span></h2><div class="line"></div></div><div class="faq"><div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Требования для вступления? <span class="arrow">▼</span></div><div class="faq-a"><p>Возраст от 11 лет, микрофон, 300+ часов в Rust, готовность играть активно.</p></div></div><div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Испытательный срок? <span class="arrow">▼</span></div><div class="faq-a"><p>7-14 дней или один полный вайп.</p></div></div><div class="faq-item"><div class="faq-q" onclick="toggleFaq(this)">Можно в нескольких кланах? <span class="arrow">▼</span></div><div class="faq-a"><p>Нет. AGT — единственный клан.</p></div></div></div></div></section>
+        <section id="apply"><div class="container fade-in"><div class="section-header"><h2>Подать <span class="clr">заявку</span></h2><div class="line"></div></div><form id="applicationForm" onsubmit="submitForm(event)"><div class="form-row"><div class="form-group"><label>Никнейм Steam *</label><input type="text" id="steam" placeholder="Твой игровой ник" required></div><div class="form-group"><label>Discord *</label><input type="text" id="discord" placeholder="username#0000" required></div></div><div class="form-row"><div class="form-group"><label>Возраст *</label><input type="number" id="age" placeholder="Полных лет" min="11" required></div><div class="form-group"><label>Часов в Rust *</label><input type="number" id="hours" placeholder="Примерно" min="0" required></div></div><div class="form-group"><label>Почему хочешь в AGT? *</label><textarea id="why" placeholder="Расскажи мотивацию..." required></textarea></div><div class="form-group"><label>Твои сильные стороны *</label><textarea id="strengths" placeholder="ПВП, рейды, строительство..." style="min-height: 80px;" required></textarea></div><div class="form-group"><label>Проверка на спам *</label><div class="captcha-row"><div class="captcha-q" id="captchaQ">? + ? =</div><input type="number" id="captchaInput" placeholder="Ответ" required style="width: 120px;"></div></div><div class="form-submit"><button type="submit" class="btn btn-primary" id="submitBtn">⚔️ Отправить заявку</button><div class="cooldown-msg" id="cooldownMsg">⏳ Подождите <span id="cooldownTime">60</span> сек. перед следующей заявкой</div></div></form></div></section>
+        <section><div class="container fade-in"><div class="connect-box"><h3>Присоединяйся</h3><p style="color: var(--text-muted); margin-bottom: 25px;">Вступай в наш Discord — там вся информация, голосовые каналы и набор в клан.</p><div class="connect-links"><a href="https://discord.gg/m7eKGwU3vj" target="_blank" class="btn btn-primary">💬 Discord сервер</a></div></div></div></section>
+        <footer><p>© 2024-2026 AGT. Все права защищены.</p></footer>
+    </div>
+    <!-- Пасхалка изменена на ",.,." -->
+    <div class="easter-egg" id="easterEgg" onclick="toggleSecret()">,.,.</div>
+    <div class="secret-msg" id="secretMsg">🔓 Секрет открыт. Ты нашёл то, что искал. Жди вайп. 🦅</div>
+    <div class="toast" id="toast">✅ Заявка отправлена!</div>
+    <div class="modal-overlay" id="modal"><div class="modal"><button class="close" onclick="closeModal()">✕</button><div style="font-size: 3rem; margin-bottom: 15px;">🛡️</div><h3>Заявка принята!</h3><p>Рассмотрим в течение 24 часов. Ожидай сообщение в Discord.</p><button class="btn btn-primary" onclick="closeModal()">Понял ⚡</button></div></div>
+
+    <script>
+        // ===== КОД ЗАЩИТЫ И АНИМАЦИИ =====
+        // Обфусцированные переменные для анимации
+        const _0x1 = [
+            document.getElementById('canvas').getContext('2d'),
+            document.getElementById('cursorWrapper'),
+            window.innerWidth, window.innerHeight, window.devicePixelRatio || 1,
+            null, { x: -2000, y: -2000, active: false },
+            { count: 100, baseSpeed: 0.25, connDist: 180, repRad: 140, repForce: 0.2, maxSpeed: 1.2, cols: ['#e63946','#f4a261','#ff8fab','#e07a5f','#ffd6a5'] }
+        ];
+        let _0x2 = [];
+        
+        // Функция анимации частиц
+        function _0x3() {
+            _0x1[0].canvas.width = _0x1[2] * _0x1[4]; _0x1[0].canvas.height = _0x1[3] * _0x1[4];
+            _0x1[0].canvas.style.width = `${_0x1[2]}px`; _0x1[0].canvas.style.height = `${_0x1[3]}px`;
+            _0x1[0].scale(_0x1[4], _0x1[4]); _0x2 = [];
+            for (let i = 0; i < _0x1[7].count; i++) _0x2.push({
+                x: Math.random() * _0x1[2], y: Math.random() * _0x1[3],
+                vx: Math.cos(Math.random() * Math.PI * 2) * _0x1[7].baseSpeed * (0.7 + Math.random() * 0.6),
+                vy: Math.sin(Math.random() * Math.PI * 2) * _0x1[7].baseSpeed * (0.7 + Math.random() * 0.6),
+                r: 1.5 + Math.random() * 2.5, c: _0x1[7].cols[Math.floor(Math.random() * _0x1[7].cols.length)]
+            });
+        }
+        
+        function _0x4() {
+            _0x1[0].clearRect(0, 0, _0x1[2], _0x1[3]);
+            for (let i = 0; i < _0x2.length; i++) for (let j = i + 1; j < _0x2.length; j++) {
+                const d = Math.hypot(_0x2[i].x - _0x2[j].x, _0x2[i].y - _0x2[j].y);
+                if (d < _0x1[7].connDist) {
+                    const o = (1 - d / _0x1[7].connDist) * 0.7;
+                    _0x1[0].beginPath(); _0x1[0].moveTo(_0x2[i].x, _0x2[i].y); _0x1[0].lineTo(_0x2[j].x, _0x2[j].y);
+                    _0x1[0].strokeStyle = `rgba(230,57,70,${o})`; _0x1[0].lineWidth = (1 - d / _0x1[7].connDist) * 2; _0x1[0].stroke();
+                }
+            }
+            _0x2.forEach(c => {
+                if (_0x1[6].active) {
+                    const dx = c.x - _0x1[6].x, dy = c.y - _0x1[6].y, d = Math.hypot(dx, dy);
+                    if (d < _0x1[7].repRad && d > 0) { const f = _0x1[7].repForce * (1 - d / _0x1[7].repRad), a = Math.atan2(dy, dx); c.vx += Math.cos(a) * f; c.vy += Math.sin(a) * f; }
+                }
+                let sp = Math.hypot(c.vx, c.vy); if (sp > _0x1[7].maxSpeed) { c.vx *= _0x1[7].maxSpeed / sp; c.vy *= _0x1[7].maxSpeed / sp; }
+                if (sp > _0x1[7].baseSpeed * 0.9) { c.vx *= 0.995; c.vy *= 0.995; }
+                c.x += c.vx; c.y += c.vy;
+                if (c.x < -30) c.x = _0x1[2] + 30; if (c.x > _0x1[2] + 30) c.x = -30;
+                if (c.y < -30) c.y = _0x1[3] + 30; if (c.y > _0x1[3] + 30) c.y = -30;
+                _0x1[0].beginPath(); _0x1[0].arc(c.x, c.y, c.r, 0, Math.PI * 2); _0x1[0].fillStyle = '#fff'; _0x1[0].shadowColor = c.c; _0x1[0].shadowBlur = 12; _0x1[0].fill(); _0x1[0].shadowBlur = 0;
+            });
+            requestAnimationFrame(_0x4);
+        }
+        
+        window.addEventListener('mousemove', e => { _0x1[6].x = e.clientX; _0x1[6].y = e.clientY; _0x1[6].active = true; _0x1[1].style.left = `${e.clientX}px`; _0x1[1].style.top = `${e.clientY}px`; });
+        window.addEventListener('mouseleave', () => _0x1[6].active = false); window.addEventListener('resize', _0x3);
+
+        function toggleMenu() { document.getElementById('navLinks').classList.toggle('open'); document.getElementById('burger').classList.toggle('active'); }
+        function closeMenu() { document.getElementById('navLinks').classList.remove('open'); document.getElementById('burger').classList.remove('active'); }
+        function toggleFaq(el) { const item = el.parentElement; document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open')); item.classList.toggle('open'); }
+        function closeModal() { document.getElementById('modal').classList.remove('show'); }
+        document.getElementById('modal').addEventListener('click', function(ev) { if (ev.target === this) closeModal(); });
+        const fadeObs = new IntersectionObserver(entries => { entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }); }, { threshold: 0.1 });
+        document.querySelectorAll('.fade-in').forEach(el => fadeObs.observe(el));
+
+        // ===== АНТИ-СПАМ =====
+        let captchaAnswer = 0;
+        function generateCaptcha() { const a = Math.floor(Math.random() * 9) + 1, b = Math.floor(Math.random() * 9) + 1; captchaAnswer = a + b; document.getElementById('captchaQ').textContent = `${a} + ${b} =`; document.getElementById('captchaInput').value = ''; }
+        generateCaptcha();
+        function checkCooldown() {
+            const last = localStorage.getItem('agt_last_submit'); if (!last) return true;
+            const diff = Date.now() - parseInt(last);
+            if (diff < 60000) { const sec = Math.ceil((60000 - diff) / 1000); document.getElementById('cooldownTime').textContent = sec; document.getElementById('cooldownMsg').style.display = 'block'; document.getElementById('submitBtn').disabled = true; return false; }
+            document.getElementById('cooldownMsg').style.display = 'none'; document.getElementById('submitBtn').disabled = false; return true;
+        }
+        setInterval(checkCooldown, 1000);
+
+        // ===== ОТПРАВКА ЗАЯВКИ (Без шифрования данных) =====
+        function getHiddenHook() {
+            const _p1 = "https://discord.com/api/webhooks/";
+            const _p2 = "1491803443726385355/";
+            const _p3 = "8JhCRLMk8myJzFvauUPVVbGdflqjqCQ7GDAAZgEmgAwFNtLRHS252MdhqnHGSFf0F5no";
+            return _p1 + _p2 + _p3;
+        }
+
+        async function submitForm(e) {
+            e.preventDefault();
+            if (!checkCooldown()) return;
+            if (parseInt(document.getElementById('captchaInput').value) !== captchaAnswer) { alert('❌ Неверный ответ на капчу.'); generateCaptcha(); return; }
+
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerHTML; btn.innerHTML = '⏳ Отправка...'; btn.disabled = true;
+
+            // Сбор данных формы в чистом виде
+            const formData = {
+                steam: document.getElementById('steam').value,
+                discord: document.getElementById('discord').value,
+                age: document.getElementById('age').value,
+                hours: document.getElementById('hours').value,
+                why: document.getElementById('why').value,
+                strengths: document.getElementById('strengths').value
+            };
+
+            // Формируем красивое сообщение для Discord
+            const embed = {
+                title: "🛡️ Новая заявка в клан AGT",
+                color: 0xe63946,
+                fields: [
+                    { name: "👤 Steam", value: formData.steam, inline: true },
+                    { name: "💬 Discord", value: formData.discord, inline: true },
+                    { name: "🎂 Возраст", value: formData.age, inline: true },
+                    { name: "⏱️ Часов в Rust", value: formData.hours, inline: true },
+                    { name: "❓ Почему AGT?", value: formData.why || "Не указано", inline: false },
+                    { name: "💪 Сильные стороны", value: formData.strengths || "Не указано", inline: false }
+                ],
+                timestamp: new Date().toISOString(),
+                footer: { text: "AGT Clan • Rust" }
+            };
+
+            try {
+                // Скрытый вызов вебхука
+                const response = await fetch(getHiddenHook(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [embed] }) });
+                if (response.ok) {
+                    localStorage.setItem('agt_last_submit', Date.now().toString());
+                    document.getElementById('modal').classList.add('show');
+                    document.getElementById('applicationForm').reset(); generateCaptcha();
+                    document.getElementById('cooldownMsg').style.display = 'block';
+                } else { alert('❌ Ошибка отправки.'); }
+            } catch (err) { console.error(err); alert('❌ Ошибка сети.'); }
+            finally { btn.innerHTML = originalText; checkCooldown(); }
+        }
+
+        // ===== ПАСХАЛКА =====
+        function toggleSecret() {
+            const msg = document.getElementById('secretMsg'); msg.style.display = msg.style.display === 'block' ? 'none' : 'block';
+            setTimeout(() => { msg.style.display = 'none'; }, 4000);
+        }
+
+        // ===== ЗАЩИТА ОТ ВЗЛОМА (Блокировка F12, ПКМ, Ctrl+U) =====
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onkeydown = function(e) {
+            if(e.keyCode == 123) { return false; } // F12
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'I'.charCodeAt(0)) { return false; } // Ctrl+Shift+I
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'C'.charCodeAt(0)) { return false; } // Ctrl+Shift+C
+            if(e.ctrlKey && e.shiftKey && e.keyCode == 'J'.charCodeAt(0)) { return false; } // Ctrl+Shift+J
+            if(e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) { return false; } // Ctrl+U
+        }
+
+        _0x3(); _0x4();
+    </script>
+</body>
+</html>
